@@ -8,6 +8,7 @@ const char* kernel_code =
     "   if (get_global_id(0) < vector_dimension) {\n"
     "       int id = get_global_id(0);\n"
 	"		buffer[id] = vec1[id] + vec2[id];\n"
+ //   " //      printf(\"%f  \", buffer[id]);"
     "   }\n"
     "}\n"
 ;
@@ -104,25 +105,30 @@ int main(void)
         return 0;
     }
 
-	printf("create Kernel");
+    printf("create Kernel");
     cl_kernel kernel = clCreateKernel(program, "add_vectors", &err);
 	if (err != CL_SUCCESS){
 		printf("%d\n", err);
 		return 0;
 	}
 printf("created");
-    // Create the host buffer and initialize it
+
+ // Create the host buffer and initialize it
     float* host_buffer = (float*)malloc(VECTOR_DIMENSION * sizeof(float));
     for (i = 0; i < VECTOR_DIMENSION; ++i) {
         host_buffer[i] = i;
     }
 
-    // Create the device buffer
-    cl_mem device_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, VECTOR_DIMENSION * sizeof(float), NULL, &err);
+// Create the device buffer
+    cl_mem device_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, VECTOR_DIMENSION * sizeof(float), host_buffer, &err);
 	if (err != CL_SUCCESS){
 		printf("%d\n", err);
 		return 0;
 	}
+
+    cl_mem vec1_buff = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, VECTOR_DIMENSION * sizeof(float), vec1, &err);
+    cl_mem vec2_buff = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, VECTOR_DIMENSION * sizeof(float), vec2, &err);
+
 
     // Set kernel arguments
     err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&device_buffer);
@@ -131,13 +137,15 @@ printf("created");
 		return 0;
 	}
 
-	err = clSetKernelArg(kernel, 1, sizeof(float*), (void*)vec1);
+    printf("buff");
+	err = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&vec1_buff);
 	if (err != CL_SUCCESS){
 		printf("%d\n", err);
 		return 0;
 	}
+    printf("arg");
 
-	err = clSetKernelArg(kernel, 2, sizeof(float*), (void*)vec2);
+	err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&vec2_buff);
 
 	if (err != CL_SUCCESS){
 		printf("%d\n", err);
@@ -146,60 +154,72 @@ printf("created");
 
     clSetKernelArg(kernel, 3, sizeof(int), (void*)&VECTOR_DIMENSION);
 
-    // // Create the command queue
-    // cl_command_queue command_queue = clCreateCommandQueue(context, device_id, NULL, NULL);
 
-    // // Host buffer -> Device buffer
-    // clEnqueueWriteBuffer(
-    //     command_queue,
-    //     device_buffer,
-    //     CL_FALSE,
-    //     0,
-    //     VECTOR_DIMENSION * sizeof(float),
-    //     host_buffer,
-    //     0,
-    //     NULL,
-    //     NULL
-    // );
+// Create the command queue
+    cl_command_queue command_queue = clCreateCommandQueue(context, device_id, NULL, NULL);
 
-    // // Size specification
-    // size_t local_work_size = 256;
-    // size_t n_work_groups = (VECTOR_DIMENSION + local_work_size + 1) / local_work_size;
-    // size_t global_work_size = n_work_groups * local_work_size;
+    // Host buffer -> Device buffer
+    clEnqueueWriteBuffer(
+        command_queue,
+        device_buffer,
+        CL_FALSE,
+        0,
+        VECTOR_DIMENSION * sizeof(float),
+        host_buffer,
+        0,
+        NULL,
+        NULL
+    );
 
-    // // Apply the kernel on the range
-    // clEnqueueNDRangeKernel(
-    //     command_queue,
-    //     kernel,
-    //     1,
-    //     NULL,
-    //     &global_work_size,
-    //     &local_work_size,
-    //     0,
-    //     NULL,
-    //     NULL
-    // );
+    // Size specification
+    size_t local_work_size = 256;
+    size_t n_work_groups = (VECTOR_DIMENSION + local_work_size + 1) / local_work_size;
+    size_t global_work_size = n_work_groups * local_work_size;
 
-    // // Host buffer <- Device buffer
-    // clEnqueueReadBuffer(
-    //     command_queue,
-    //     device_buffer,
-    //     CL_TRUE,
-    //     0,
-    //     VECTOR_DIMENSION * sizeof(float),
-    //     host_buffer,
-    //     0,
-    //     NULL,
-    //     NULL
-    // );
+    // Apply the kernel on the range
+    clEnqueueNDRangeKernel(
+        command_queue,
+        kernel,
+        1,
+        NULL,
+        &global_work_size,
+        &local_work_size,
+        0,
+        NULL,
+        NULL
+    );
+
+    clFinish(command_queue);
+
+    // Host buffer <- Device buffer
+    err = clEnqueueReadBuffer(
+        command_queue,
+        device_buffer,
+        CL_TRUE,
+        0,
+        VECTOR_DIMENSION * sizeof(float),
+        host_buffer,
+        0,
+        NULL,
+        NULL
+    );
+
+    if (err != CL_SUCCESS){
+		printf("%d\n", err);
+		return 0;
+	}
 	
-	clFinish();
+	clFinish(command_queue);
 
-    // for (i = 0; i < VECTOR_DIMENSION; ++i) {
-    //     printf("[%d] = %d, ", i, host_buffer[i]);
-    // }
+    for (i = 0; i < VECTOR_DIMENSION; ++i) {
+        printf("[%d] = %f, ", i, host_buffer[i]);
+    }
 
-    // Release the resources
+
+
+
+    printf("c");
+
     clReleaseKernel(kernel);
     clReleaseProgram(program);
     clReleaseContext(context);
