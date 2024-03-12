@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "jpeglib.h": "c",
+        "stb_image.h": "c",
+        "convert.h": "c",
+        "load_images.h": "c",
+        "stdlib.h": "c",
+        "stdio.h": "c",
+        "image_data.h": "c"
+    }
+}

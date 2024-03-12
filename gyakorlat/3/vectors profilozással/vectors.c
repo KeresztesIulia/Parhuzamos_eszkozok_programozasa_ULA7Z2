@@ -105,13 +105,11 @@ int main(void)
         return 0;
     }
 
-    printf("create Kernel");
     cl_kernel kernel = clCreateKernel(program, "add_vectors", &err);
 	if (err != CL_SUCCESS){
 		printf("%d\n", err);
 		return 0;
 	}
-printf("created");
 
  // Create the host buffer and initialize it
     float* host_buffer = (float*)malloc(VECTOR_DIMENSION * sizeof(float));
@@ -137,13 +135,11 @@ printf("created");
 		return 0;
 	}
 
-    printf("buff");
 	err = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&vec1_buff);
 	if (err != CL_SUCCESS){
 		printf("%d\n", err);
 		return 0;
 	}
-    printf("arg");
 
 	err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&vec2_buff);
 
@@ -156,7 +152,7 @@ printf("created");
 
 
 // Create the command queue
-    cl_command_queue command_queue = clCreateCommandQueue(context, device_id, NULL, NULL);
+    cl_command_queue command_queue = clCreateCommandQueue(context, device_id, CL_QUEUE_PROFILING_ENABLE, NULL);
 
     // Host buffer -> Device buffer
     clEnqueueWriteBuffer(
@@ -215,13 +211,43 @@ printf("created");
 	
 	clFinish(command_queue);
 
-    for (i = 0; i < VECTOR_DIMENSION; ++i) {
-        printf("[%d] = %f, ", i, host_buffer[i]);
-    }
+    // for (i = 0; i < VECTOR_DIMENSION; ++i) {
+    //     printf("[%d] = %f, ", i, host_buffer[i]);
+    // }
 
+    cl_ulong start;
+    cl_ulong end;
+    err = clGetEventProfilingInfo(
+        event,
+        CL_PROFILING_COMMAND_START, 
+        sizeof(start), 
+        &start, 
+        NULL
+    );
+    if (err == CL_PROFILING_INFO_NOT_AVAILABLE) {
+        printf("Profiling info not available!\n");
+        return 0;
+    } else if (err != CL_SUCCESS) {
+        printf("Error code: %d\n", err);
+        return 0;
+    }
+    printf("Start : %lu\n", start);
+
+    clGetEventProfilingInfo(
+        event,
+        CL_PROFILING_COMMAND_END,
+        sizeof(end),
+        &end,
+        NULL
+    );
+    printf("End    : %lu\n", end);
+
+    printf("Time spent  : %.15f\n", (float)(end - start) / (float)1000000000);
 
 
     printf("c");
+
+    printf("\e[1;1H\e[2J");
 
     clReleaseKernel(kernel);
     clReleaseProgram(program);
