@@ -10,6 +10,7 @@
 #include "color_management.h"
 
 
+
 int ImageToPixelData(unsigned char* originalImageData, Pixel* pixelData, int size, int channels)
 {
     if (pixelData == NULL){
@@ -24,7 +25,7 @@ int ImageToPixelData(unsigned char* originalImageData, Pixel* pixelData, int siz
         pixel.G = originalImageData[i+1];
         pixel.B = originalImageData[i+2];
         if (channels == 4) pixel.A = originalImageData[i+3];
-        else pixel.A = 1;
+        else pixel.A = 255;
         pixelData[j] = pixel;
     }
     return 0;
@@ -53,6 +54,11 @@ int LoadAndConvert(char* path, Pixel** pixelData, int* width, int* height, int* 
 }
 int PixelDataToArray(Pixel* pixelData, unsigned char* convertedImage, int size, int channels)
 {
+    if (pixelData == NULL || convertedImage == NULL)
+    {
+        printf("PixelDataToArray: One of the arrays is null!\n");
+        return -1;
+    }
     for (int i = 0, j = 0; j < size; i += channels, j++)
     {
         convertedImage[i] = pixelData[j].R;
@@ -62,58 +68,23 @@ int PixelDataToArray(Pixel* pixelData, unsigned char* convertedImage, int size, 
     }
     return 0;
 }
-
-int LoadAsColorMask(char* path, Image* image, int threshold)
+int ExpandMask(Mask* mask, unsigned char* fullImage)
 {
-    int err = LoadAndConvert(path, &image->pixelData, &image->width, &image->height, &image->channels);
-    if (image->pixelData == NULL){
-        printf("PixelData is null!");
+    if (mask == NULL)
+    {
+        printf("Can't expand NULL mask!\n");
         return -1;
     }
-
-    image->size =  image->width * image->height;
-
-    if (threshold > 0 && threshold <= 255)
+    for (int i = 0, j = 0; j < mask->size; i += 3, j++)
     {
-        err = ToBlackAndWhite(image->pixelData, image->pixelData, image->size, threshold);
-        if (err != 0){
-            printf("Black and white conversion error!\n");
-            return err;
-        }
-    }
-    else
-    {
-        err = ToGrayscale(image->pixelData, image->pixelData, image->size);
-        if (err != 0){
-            printf("Greyscale conversion error!\n");
-            return err;
-        }
+        unsigned char value = mask->array[j];
+        fullImage[i] = value;
+        fullImage[i+1] = value;
+        fullImage[i+2] = value;
     }
     return 0;
 }
-int LoadAsAlphaMask(char* path, Image* image, int threshold)
-{
-    int err = LoadAndConvert(path, &image->pixelData, &image->width, &image->height, &image->channels);
-    if (image->pixelData == NULL){
-        printf("PixelData is null!");
-        return -1;
-    }
-    if (image->channels != 4)
-    {
-        printf("Can't load non-transparent image as alpha mask!\n");
-        return -2;
-    }
 
-    image->size =  image->width * image->height;
-
-    err = AlphaToGreyscale(image->pixelData, image->pixelData, image->size, threshold);
-    if (err != 0)
-    {
-        return -3;
-    }
-
-    return 0;
-}
 int LoadAsImage(char* path, Image* image)
 {
     int err = LoadAndConvert(path, &image->pixelData, &image->width, &image->height, &image->channels);
@@ -126,7 +97,63 @@ int LoadAsImage(char* path, Image* image)
 
     return 0;
 }
+int LoadAsColorMask(char* path, Mask* mask, int threshold)
+{
+    Image* temp = (Image*)malloc(sizeof(Image));
+    int err = LoadAndConvert(path, &temp->pixelData, &mask->width, &mask->height, &temp->channels);
+    if (temp->pixelData == NULL){
+        printf("PixelData is null!");
+        return -1;
+    }
 
+    mask->size =  mask->width * mask->height;
+    mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
+
+    if (threshold > 0 && threshold <= RGB_MAX)
+    {
+        err = ToBlackAndWhiteMASK(temp->pixelData, mask->array, mask->size, threshold);
+        if (err != 0){
+            printf("Black and white conversion error!\n");
+            return err;
+        }
+    }
+    else
+    {
+        err = ToGrayscaleMASK(temp->pixelData, mask->array, mask->size);
+        if (err != 0){
+            printf("Greyscale conversion error!\n");
+            return err;
+        }
+    }
+    
+    freeImage(temp);
+    return 0;
+}
+int LoadAsAlphaMask(char* path, Mask* mask, int threshold)
+{
+    Image* temp = (Image*)malloc(sizeof(Image));
+    int err = LoadAndConvert(path, &temp->pixelData, &mask->width, &mask->height, &temp->channels);
+    if (temp->pixelData == NULL){
+        printf("PixelData is null!");
+        return -1;
+    }
+    if (temp->channels != 4)
+    {
+        printf("Can't load non-transparent image as alpha mask!\n");
+        return -2;
+    }
+
+    mask->size =  mask->width * mask->height;
+    mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
+
+    err = AlphaToGreyscaleMASK(temp->pixelData, mask->array, mask->size, threshold);
+    if (err != 0)
+    {
+        return -3;
+    }
+    freeImage(temp);
+    return 0;
+}
 
 int SaveImage(char* path, Image* image)
 {
@@ -136,6 +163,7 @@ int SaveImage(char* path, Image* image)
         printf("Memory allocation failed!");
         return -1;
     }
+    
     int err = PixelDataToArray(image->pixelData, endImage, image->size, image->channels);
     if (err != 0)
     {
@@ -147,10 +175,34 @@ int SaveImage(char* path, Image* image)
     printf("Image exported!\n");
 
     free(endImage); 
+    return 0;
 }
+int SaveMask(char* path, Mask* mask)
+{
+
+    unsigned char* endImage = (unsigned char*)malloc(mask->size * 3);
+    if (endImage == NULL){
+        free(endImage);
+        printf("Memory allocation failed!");
+        return -1;
+    }
+    int err = ExpandMask(mask, endImage);
+    if (err != 0)
+    {
+        printf("Save: Error converting to array!\n");
+        return -2;
+    }
+
+    stbi_write_png(path, mask->width, mask->height, 3, endImage, mask->width * 3);
+    printf("Mask exported!\n");
+
+    free(endImage); 
+    return 0;
+}
+
 int CopyImage(Image* original, Image* copy)
 { 
-    int err = CopyPixelData(original->pixelData, copy->pixelData, original->size);
+    int err = CopyPixelData(original->pixelData, &copy->pixelData, original->size);
     if (err != 0)
     {
         printf("Error copying image!\n");
@@ -179,4 +231,16 @@ int CopyPixelData(Pixel* original, Pixel** copy, int size)
         (*copy)[i].A = original[i].A;
     }
     return 0;
+}
+void freeImage(Image* image)
+{
+    if (image == NULL) return;
+    free(image->pixelData);
+    free(image);
+}
+void freeMask(Mask* mask)
+{
+    if (mask == NULL) return;
+    free(mask->array);
+    free(mask);
 }

@@ -14,7 +14,6 @@ int CombineOnAlphaMask(char* img1Path, char* img2Path, char* maskPath, Image** r
 int CombineOnColorMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold);
 
 int preCombineOnAlpha(Image* img1, Image* img2, Image** result, int threshold);
-int preCombineOnAlphaMask(Image* img1, Image* img2, Image* mask, Image** result, int threshold);
-int preCombineOnColorMask(Image* img1, Image* img2, Image* mask, Image** result, int threshold);
+int preCombine(Image* img1, Image* img2, Mask* mask, Image** result, int threshold);
 
 #endif

@@ -4,8 +4,16 @@
 
 #include "color_management.h"
 
-#define RGB_MAX 255
+double LinearRGB(unsigned char value)
+{
+    double linearValue;
+    linearValue = value / (double)RGB_MAX;
+    if (linearValue <= 0.04045) linearValue = linearValue / 12.92;
+    else linearValue = pow((linearValue + 0.055)/1.055, 2.4);
+    return linearValue;
+}
 
+// PixelData to pixelData
 int ToGrayscale(Pixel* original, Pixel* grayscale, int size)
 {
     if (original == NULL || grayscale == NULL){
@@ -75,16 +83,6 @@ int AlphaToGreyscale(Pixel* original, Pixel* grayscale, int size, int threshold)
     }
     return 0;
 }
-
-
-double LinearRGB(unsigned char value)
-{
-    double linearValue;
-    linearValue = value / (double)RGB_MAX;
-    if (linearValue <= 0.04045) linearValue = linearValue / 12.92;
-    else linearValue = pow((linearValue + 0.055)/1.055, 2.4);
-    return linearValue;
-}
 int Luminance(Pixel* original, Pixel* grayed)
 {
     if (original == NULL || grayed == NULL){
@@ -96,5 +94,78 @@ int Luminance(Pixel* original, Pixel* grayed)
     grayed->G = luminance;
     grayed->B = luminance;
     grayed->A = RGB_MAX;
+    return 0;
+}
+
+// PixelData to array
+int ToGrayscaleMASK(Pixel* original, unsigned char* grayscale, int size)
+{
+    if (original == NULL || grayscale == NULL){
+        printf("ToGrayscale: one of the arrays is null!");
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+    {
+        int err = LuminanceMASK(&original[i], &grayscale[i]);
+        if (err != 0){
+            printf("Luminance calculation error!");
+            return -2;
+        }
+    }
+    return 0;
+}
+int ToBlackAndWhiteMASK(Pixel* original, unsigned char* blackandwhite, int size, int threshold)
+{
+    if (original == NULL || blackandwhite == NULL){
+        printf("ToBlackAndWhite: one of the arrays is null!");
+        return -1;
+    }
+    int err = ToGrayscaleMASK(original, blackandwhite, size);
+    if (err != 0)
+    {
+        return err;
+    }
+    for (int i = 0; i < size; i++)
+    {
+        if (blackandwhite[i] < threshold)
+        {
+            blackandwhite[i] = 0;
+        }
+        else
+        {
+            blackandwhite[i] = RGB_MAX;
+        }
+    }
+    return 0;
+}
+int AlphaToGreyscaleMASK(Pixel* original, unsigned char* grayscale, int size, int threshold)
+{
+    if (original == NULL || grayscale == NULL){
+        printf("AlphaToGreyscale: one of the arrays is null!\n");
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+    {
+        int value;
+        if (threshold > 0 && threshold <= RGB_MAX)
+        {
+            value = original[i].A < threshold ? 0 : RGB_MAX;
+        }
+        else
+        {
+            value = original[i].A;
+        }
+        grayscale[i] = value;
+    }
+    return 0;
+}
+int LuminanceMASK(Pixel* original, unsigned char* grayed)
+{
+    if (original == NULL || grayed == NULL){
+        printf("Luminance: pixelData is null");
+        return -2;
+    }
+    unsigned char luminance = (0.2126 * LinearRGB(original->R) + 0.7152 * LinearRGB(original->G) + 0.0722 * LinearRGB(original->B)) * RGB_MAX;
+    *grayed = luminance;
     return 0;
 }
