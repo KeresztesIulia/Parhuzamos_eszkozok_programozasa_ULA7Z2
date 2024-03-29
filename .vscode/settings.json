@@ -6,6 +6,11 @@
         "load_images.h": "c",
         "stdlib.h": "c",
         "stdio.h": "c",
-        "image_data.h": "c"
-    }
+        "image_data.h": "c",
+        "kernel_loader.h": "c",
+        "stb_image_write.h": "c",
+        "combine_images.h": "c",
+        "color_management.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "enabled"
 }

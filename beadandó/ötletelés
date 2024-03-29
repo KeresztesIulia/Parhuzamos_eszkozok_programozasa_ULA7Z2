@@ -1,4 +1,3 @@
-- képblúrozás
 - maskolás: jpg-ből png egy adott maszk alapján
   - maszk: 0-1 közötti értékek, fekete az átlátszó, 1 a teljesen látható
   - sharpNN/sharp/soft:

@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
 #include "load_images.h"
@@ -88,9 +86,14 @@ int ExpandMask(Mask* mask, unsigned char* fullImage)
 int LoadAsImage(char* path, Image* image)
 {
     int err = LoadAndConvert(path, &image->pixelData, &image->width, &image->height, &image->channels);
+    if (err != 0)
+    {
+        printf("Load error!");
+        return -1;
+    }
     if (image->pixelData == NULL){
         printf("PixelData is null!");
-        return -1;
+        return -2;
     }
 
     image->size =  image->width * image->height;
