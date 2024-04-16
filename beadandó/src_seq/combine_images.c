@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
 #include "load_images.h"
 #include "combine_images.h"
 #include "color_management.h"
 
-int CombineOnAlpha(char* img1Path, char* img2Path, Image** result, int threshold)
+int CombineOnAlpha(char* img1Path, char* img2Path, Image** result, int threshold, TimeInfo* timeInfo)
 {
     Image* img1 = (Image*)malloc(sizeof(Image));
     if (img1 == NULL)
@@ -34,7 +35,7 @@ int CombineOnAlpha(char* img1Path, char* img2Path, Image** result, int threshold
         return -2;
     }
 
-    err = preCombineOnAlpha(img1, img2, result, threshold);
+    err = preCombineOnAlpha(img1, img2, result, threshold, timeInfo);
     if (err != 0)
     {
         printf("CombineOnAlpha: Combination failed!");
@@ -44,7 +45,7 @@ int CombineOnAlpha(char* img1Path, char* img2Path, Image** result, int threshold
     freeImage(img2);
     return 0;
 }
-int CombineOnAlphaMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold)
+int CombineOnAlphaMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold, TimeInfo* timeInfo)
 {
     Image* img1 = (Image*)malloc(sizeof(Image));
     if (img1 == NULL)
@@ -77,14 +78,14 @@ int CombineOnAlphaMask(char* img1Path, char* img2Path, char* maskPath, Image** r
         printf("CombineOnAlphaMask: Failed to load second image!\n");
         return -2;
     }
-    err = LoadAsAlphaMask(maskPath, mask, threshold);
+    err = LoadAsAlphaMask(maskPath, mask, threshold, timeInfo);
     if (err != 0)
     {
         printf("CombineOnAlphaMask: Failed to load mask!\n");
         return -2;
     }
 
-    err = preCombine(img1, img2, mask, result, threshold);
+    err = preCombine(img1, img2, mask, result, threshold, timeInfo);
     if (err != 0)
     {
         printf("CombineOnAlphaMask: Combination failed!");
@@ -95,7 +96,7 @@ int CombineOnAlphaMask(char* img1Path, char* img2Path, char* maskPath, Image** r
     freeMask(mask);
     return 0;
 }
-int CombineOnColorMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold)
+int CombineOnColorMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold, TimeInfo* timeInfo)
 {
     Image* img1 = (Image*)malloc(sizeof(Image));
     if (img1 == NULL)
@@ -128,14 +129,14 @@ int CombineOnColorMask(char* img1Path, char* img2Path, char* maskPath, Image** r
         printf("CombineOnColorMask: Failed to load second image!\n");
         return -2;
     }
-    err = LoadAsColorMask(maskPath, mask, threshold);
+    err = LoadAsColorMask(maskPath, mask, threshold, timeInfo);
     if (err != 0)
     {
         printf("CombineOnColorMask: Failed to load mask!\n");
         return -2;
     }
 
-    err = preCombine(img1, img2, mask, result, threshold);
+    err = preCombine(img1, img2, mask, result, threshold, timeInfo);
     if (err != 0)
     {
         printf("CombineOnColorMask: Combination failed!");
@@ -147,7 +148,7 @@ int CombineOnColorMask(char* img1Path, char* img2Path, char* maskPath, Image** r
     return 0;
 }
 
-int preCombineOnAlpha(Image* img1, Image* img2, Image** result, int threshold)
+int preCombineOnAlpha(Image* img1, Image* img2, Image** result, int threshold, TimeInfo* timeInfo)
 {
     if (img1 == NULL || img2 == NULL)
     {
@@ -164,22 +165,24 @@ int preCombineOnAlpha(Image* img1, Image* img2, Image** result, int threshold)
     mask->height = img1->height;
     mask->size = img1->size;
     mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
+    timeInfo->maskStart = clock();
     int err = AlphaToGreyscaleMASK(img1->pixelData, mask->array, img1->size, threshold);
     if (err != 0)
     {
         printf("preCombineOnAlpha: Alpha mask creation error!\n");
         return -4;
     }
-    err = preCombine(img1, img2, mask, result, threshold);
+    err = preCombine(img1, img2, mask, result, threshold, timeInfo);
     if (err != 0)
     {
         printf("preCombineOnAlpha: Combine error!\n");
         return -5;
     }
+    timeInfo->maskEnd = clock();
     freeMask(mask);
     return 0;
 }
-int preCombine(Image* img1, Image* img2, Mask* mask, Image** result, int threshold)
+int preCombine(Image* img1, Image* img2, Mask* mask, Image** result, int threshold, TimeInfo* timeInfo)
 {
     if (img1 == NULL || img2 == NULL || mask == NULL)
     {
@@ -198,7 +201,7 @@ int preCombine(Image* img1, Image* img2, Mask* mask, Image** result, int thresho
     (*result)->pixelData = (Pixel*)malloc(sizeof(Pixel)*(*result)->size);
     (*result)->channels = fmax(img1->channels, img2->channels);
     
-
+    timeInfo->combineStart = clock();
     for (int i = 0; i < img1->size; i++)
     {
         int img2I = i % img2->size;
@@ -227,6 +230,7 @@ int preCombine(Image* img1, Image* img2, Mask* mask, Image** result, int thresho
             (*result)->pixelData[i].A = alpha > RGB_MAX ? RGB_MAX : alpha;
         }
     }
+    timeInfo->combineEnd = clock();
     
     return 0;
 }

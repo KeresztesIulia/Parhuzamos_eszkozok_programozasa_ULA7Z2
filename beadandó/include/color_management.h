@@ -3,6 +3,8 @@
 
 #include "image_data.h"
 
+#define RGB_MAX 255
+
 double LinearRGB(unsigned char value);
 
 // PixelData to pixelData

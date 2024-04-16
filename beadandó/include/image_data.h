@@ -23,4 +23,11 @@ typedef struct Mask{
     int size;
 } Mask;
 
+typedef struct ImageInfo{
+    int width;
+    int height;
+    int size;
+    int channels;
+} ImageInfo;
+
 #endif

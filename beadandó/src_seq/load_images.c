@@ -16,6 +16,8 @@ int ImageToPixelData(unsigned char* originalImageData, Pixel* pixelData, int siz
         return -1;
     }
     int j = 0;
+    
+    
     for (int i = 0; i < size * channels; i+=channels, j++)
     {
         Pixel pixel;
@@ -35,7 +37,7 @@ int LoadAndConvert(char* path, Pixel** pixelData, int* width, int* height, int* 
         printf("Error in loading the image\n");
         return -1;
     }
-    free(*pixelData);
+    
     *pixelData = (Pixel*)malloc(*width * *height * sizeof(Pixel));
     if (*pixelData == NULL){
         printf("Memory allocation failed!");
@@ -100,7 +102,7 @@ int LoadAsImage(char* path, Image* image)
 
     return 0;
 }
-int LoadAsColorMask(char* path, Mask* mask, int threshold)
+int LoadAsColorMask(char* path, Mask* mask, int threshold, TimeInfo* timeInfo)
 {
     Image* temp = (Image*)malloc(sizeof(Image));
     int err = LoadAndConvert(path, &temp->pixelData, &mask->width, &mask->height, &temp->channels);
@@ -112,6 +114,7 @@ int LoadAsColorMask(char* path, Mask* mask, int threshold)
     mask->size =  mask->width * mask->height;
     mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
 
+    timeInfo->maskStart = clock();
     if (threshold > 0 && threshold <= RGB_MAX)
     {
         err = ToBlackAndWhiteMASK(temp->pixelData, mask->array, mask->size, threshold);
@@ -128,11 +131,12 @@ int LoadAsColorMask(char* path, Mask* mask, int threshold)
             return err;
         }
     }
+    timeInfo->maskEnd = clock();
     
     freeImage(temp);
     return 0;
 }
-int LoadAsAlphaMask(char* path, Mask* mask, int threshold)
+int LoadAsAlphaMask(char* path, Mask* mask, int threshold, TimeInfo* timeInfo)
 {
     Image* temp = (Image*)malloc(sizeof(Image));
     int err = LoadAndConvert(path, &temp->pixelData, &mask->width, &mask->height, &temp->channels);
@@ -148,12 +152,13 @@ int LoadAsAlphaMask(char* path, Mask* mask, int threshold)
 
     mask->size =  mask->width * mask->height;
     mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
-
+    timeInfo->maskStart = clock();
     err = AlphaToGreyscaleMASK(temp->pixelData, mask->array, mask->size, threshold);
     if (err != 0)
     {
         return -3;
     }
+    timeInfo->maskEnd = clock();
     freeImage(temp);
     return 0;
 }

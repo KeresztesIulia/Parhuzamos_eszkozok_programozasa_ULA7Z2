@@ -7,13 +7,14 @@
 #ifndef COMBINE_IMAGES_H
 #define COMBINE_IMAGES_H
 
+#include "time_info.h"
 #include "image_data.h"
 
-int CombineOnAlpha(char* img1Path, char* img2Path, Image** result, int threshold);
-int CombineOnAlphaMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold);
-int CombineOnColorMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold);
+int CombineOnAlpha(char* img1Path, char* img2Path, Image** result, int threshold, TimeInfo* timeInfo);
+int CombineOnAlphaMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold, TimeInfo* timeInfo);
+int CombineOnColorMask(char* img1Path, char* img2Path, char* maskPath, Image** result, int threshold, TimeInfo* timeInfo);
 
-int preCombineOnAlpha(Image* img1, Image* img2, Image** result, int threshold);
-int preCombine(Image* img1, Image* img2, Mask* mask, Image** result, int threshold);
+int preCombineOnAlpha(Image* img1, Image* img2, Image** result, int threshold, TimeInfo* timeInfo);
+int preCombine(Image* img1, Image* img2, Mask* mask, Image** result, int threshold, TimeInfo* timeInfo);
 
 #endif

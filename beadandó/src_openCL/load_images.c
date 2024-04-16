@@ -34,7 +34,6 @@ int LoadAndConvert(char* path, Pixel** pixelData, int* width, int* height, int* 
         printf("Error in loading the image\n");
         return -1;
     }
-    free(*pixelData);
     *pixelData = (Pixel*)malloc(*width * *height * sizeof(Pixel));
     if (*pixelData == NULL){
         printf("Memory allocation failed!");
@@ -132,7 +131,7 @@ int SaveMask(char* path, Mask* mask)
         printf("Save: Error converting to array!\n");
         return -2;
     }
-
+    printf("%d %d %d\n", mask->width, mask->height, mask->size);
     stbi_write_png(path, mask->width, mask->height, 3, endImage, mask->width * 3);
     printf("Mask exported!\n");
 
