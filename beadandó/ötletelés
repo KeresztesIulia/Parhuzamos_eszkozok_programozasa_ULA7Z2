@@ -1,6 +1,0 @@
-- maskolás: jpg-ből png egy adott maszk alapján
-  - maszk: 0-1 közötti értékek, fekete az átlátszó, 1 a teljesen látható
-  - sharpNN/sharp/soft:
-    - sharpNN: ami nem 0, az 1
-    - sharp: 0.5 alatt 0, 0.5 fölött 1
-    - soft: átmenetes, az alpha egyenlő a maszk értékével
