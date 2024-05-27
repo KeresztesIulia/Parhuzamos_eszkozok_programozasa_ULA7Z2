@@ -827,7 +827,13 @@ STBIWDEF int stbi_write_hdr(char const *filename, int x, int y, int comp, const 
 static void *stbiw__sbgrowf(void **arr, int increment, int itemsize)
 {
    int m = *arr ? 2*stbiw__sbm(*arr)+increment : increment+1;
-   void *p = STBIW_REALLOC_SIZED(*arr ? stbiw__sbraw(*arr) : 0, *arr ? (stbiw__sbm(*arr)*itemsize + sizeof(int)*2) : 0, itemsize * m + sizeof(int)*2);
+   int oldsz = *arr ? (stbiw__sbm(*arr)*itemsize + sizeof(int)*2) : 0;
+   int newsz = itemsize * m + sizeof(int)*2;
+   void *p = STBIW_REALLOC_SIZED(*arr ? stbiw__sbraw(*arr) : 0, oldsz, newsz);
+   // if (p == NULL)
+   // {
+   //    printf("NULL p %d %d\n", oldsz, newsz);
+   // }
    STBIW_ASSERT(p);
    if (p) {
       if (!*arr) ((int *) p)[1] = 0;
@@ -938,7 +944,6 @@ STBIWDEF unsigned char * stbi_zlib_compress(unsigned char *data, int data_len, i
          stbiw__sbn(hash_table[h]) = quality;
       }
       stbiw__sbpush(hash_table[h],data+i);
-
       if (bestloc) {
          // "lazy matching" - check match at *next* byte, and if it's better, do cur byte as literal
          h = stbiw__zhash(data+i+1)&(stbiw__ZHASH-1);
@@ -970,6 +975,7 @@ STBIWDEF unsigned char * stbi_zlib_compress(unsigned char *data, int data_len, i
          ++i;
       }
    }
+
    // write out final bytes
    for (;i < data_len; ++i)
       stbiw__zlib_huffb(data[i]);
@@ -1220,7 +1226,7 @@ STBIWDEF int stbi_write_png(char const *filename, int x, int y, int comp, const 
    unsigned char *png = stbi_write_png_to_mem((const unsigned char *) data, stride_bytes, x, y, comp, &len);
    if (png == NULL) return 0;
 
-   f = stbiw__fopen(filename, "wb");
+   f = stbiw__fopen(filename, "wb");  
    if (!f) { STBIW_FREE(png); return 0; }
    fwrite(png, 1, len, f);
    fclose(f);

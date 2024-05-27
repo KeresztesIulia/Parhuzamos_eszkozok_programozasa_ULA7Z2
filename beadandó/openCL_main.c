@@ -1,9 +1,6 @@
 #include "kernel_loader.h"
 #include "load_images.h"
 
-// #define CL_TARGET_OPENCL_VERSION 220
-// #include <CL/cl.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,19 +12,19 @@
 
 
 int LoadImages(Image* img1, Image* img2, Image* maskImage, Mask* mask, Image* result);
-int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_context context, cl_device_id device_id, int mask_binary_size, TimeInfo* timeInfo);
+int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_context context, cl_device_id device_id, int mask_binary_size, int maskImage_binary_size, TimeInfo* timeInfo);
 int CombineKernel(Image* img1, Image* img2, Mask* mask, Image* result, cl_program program, cl_context context, cl_device_id device_id, int img1_binary_size, int img2_binary_size, int mask_binary_size, int result_binary_size, TimeInfo* timeInfo);
 
-const char* IMG1PATH = "imgs/resources/alpha_mask.png";
-const char* IMG2PATH = "imgs/resources/swirly.jpg";
-const char* MASKPATH = ""; //"imgs/resources/nonsharp_mask.jpg";
+const char* IMG1PATH = "imgs/resources/final1.png";
+const char* IMG2PATH = "imgs/resources/final2.png";
+const char* MASKPATH = "imgs/resources/final_mask.png";
 const char* SAVEPATH_MASK = "imgs/combined/maskCL.png";
 const char* SAVEPATH_IMAGE = "imgs/combined/combineCL.png";
 
 const char* TIMESPATH = "times/openCL.txt";
 
-const int THRESHOLD = 128;
-char* COMBINE_METHOD = "alpha"; // alpha, alphamask, colormask
+const int THRESHOLD = -1;
+char* COMBINE_METHOD = "colormask"; // alpha, alphamask, colormask
 
 const int WORK_GROUPS = 4;
 
@@ -41,7 +38,7 @@ int main(void)
     Image* result = (Image*)malloc(sizeof(Image)); // host buffer
     if (img1 == NULL || img2 == NULL || maskImage == NULL || mask == NULL || result == NULL)
     {
-        printf("Allocation failed!\n");
+        printf("Allocation failed!\n"); 
         return -1;
     }
     int error = LoadImages(img1, img2, maskImage, mask, result);
@@ -52,7 +49,7 @@ int main(void)
     }
     printf("Finished loading images!\n");
 
-
+    int maskImage_binary_size = maskImage->size * sizeof(Pixel);
     int mask_binary_size = mask->size * sizeof(unsigned char);
     int img1_binary_size = img1->size * sizeof(Pixel);
     int img2_binary_size = img2->size * sizeof(Pixel);
@@ -85,12 +82,13 @@ int main(void)
 		printf("[ERROR] Error calling clGetDeviceIDs. Error code: %d\n", err);
 		return 0;
 	}
+    printf("no. of devices: %u\n", n_devices);
 
     size_t size;
     clGetDeviceInfo(device_id, CL_DEVICE_NAME, 0, NULL, &size);
     char* name = (char*)malloc(sizeof(char) * (size + 1));
     clGetDeviceInfo(device_id, CL_DEVICE_NAME, size + 1, name, &size);
-    printf("device: %s\n", name);
+    printf("selected device: %s\n", name);
 
     // Create OpenCL context
     cl_context context = clCreateContext(NULL, n_devices, &device_id, NULL, NULL, &err);
@@ -161,18 +159,20 @@ int main(void)
     TimeInfo* timeInfos = (TimeInfo*)malloc(sizeof(TimeInfo));
     if (maskImage == NULL)
     {
-        if (strcmp(COMBINE_METHOD, "alphamask") == 0) COMBINE_METHOD = "alpha";
-        err = MaskKernel(COMBINE_METHOD,img1, mask, program, context, device_id, mask_binary_size, timeInfos);
+        if (strcmp(IMG1PATH, MASKPATH) == 0) COMBINE_METHOD = "alpha";
+        err = MaskKernel(COMBINE_METHOD, img1, mask, program, context, device_id, mask_binary_size, maskImage_binary_size, timeInfos);
     }
     else
     {
-        err = MaskKernel(COMBINE_METHOD, maskImage, mask, program, context, device_id, mask_binary_size, timeInfos);
+        err = MaskKernel(COMBINE_METHOD, maskImage, mask, program, context, device_id, mask_binary_size, maskImage_binary_size, timeInfos);
     }
     if (err != 0)
     {
         printf("Mask error!\n");
         return err;
     }
+
+    //_sleep(5000);
 
     err = CombineKernel(img1, img2, mask, result, program, context, device_id, img1_binary_size, img2_binary_size, mask_binary_size, result_binary_size, timeInfos);
     if (err != 0)
@@ -198,6 +198,8 @@ int main(void)
     freeImage(maskImage);
     freeMask(mask);
     freeImage(result);
+
+    printf("ended\n");
 }
 
 int LoadImages(Image* img1, Image* img2, Image* maskImage, Mask* mask, Image* result)
@@ -216,25 +218,21 @@ int LoadImages(Image* img1, Image* img2, Image* maskImage, Mask* mask, Image* re
     }
     if (strlen(MASKPATH) == 0)
     {
-        freeImage(maskImage);
-        mask->width = img1->width;
-        mask->height = img1->height;
-        mask->size = img1->size;
-        mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
+        printf("LoadImages: No maskpath given! If the mask is the same as the first image, the path shouldn't be left empty, but copied!");
+        return -5;
     }
-    else
+    err = LoadAsImage(MASKPATH, maskImage);
+    if (err != 0)
     {
-        err = LoadAsImage(MASKPATH, maskImage);
-        if (err != 0)
-        {
-            printf("Failed to load images!\n");
-            return err;
-        }
-        mask->width = maskImage->width;
-        mask->height = maskImage->height;
-        mask->size = maskImage->size;
-        mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
+        printf("Failed to load images!\n");
+        return err;
     }
+    printf("maskImage size: %d\n", maskImage->size);
+    mask->width = maskImage->width;
+    mask->height = maskImage->height;
+    mask->size = maskImage->size;
+    mask->array = (unsigned char*)malloc(mask->size * sizeof(unsigned char));
+    
     result->width = img1->width;
     result->height = img1->height;
     result->size = img1->size;
@@ -243,7 +241,7 @@ int LoadImages(Image* img1, Image* img2, Image* maskImage, Mask* mask, Image* re
     return 0;
 }
 
-int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_context context, cl_device_id device_id, int mask_binary_size, TimeInfo* timeInfo)
+int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_context context, cl_device_id device_id, int mask_binary_size, int maskImage_binary_size, TimeInfo* timeInfo)
 {
     char* maskKernelFunction = "";
     if (strcmp(type, "alpha") == 0 || strcmp(type, "alphamask") == 0)
@@ -271,15 +269,16 @@ int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_
     cl_mem mask_data_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, mask_binary_size, NULL, &err);
     if (err != CL_SUCCESS)
     {
-        printf("MaskKernel: Couldn't allocate buffer for mask data!\n");
+        printf("MaskKernel: Couldn't allocate buffer for mask data! err: %d, size: %d\n", err, mask_binary_size);
         return -1;
     }
-    cl_mem pixelData_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, maskImage->size * sizeof(Pixel), NULL, &err);
+    cl_mem pixelData_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, maskImage_binary_size, NULL, &err);
     if (err != CL_SUCCESS)
     {
         printf("MaskKernel: Couldn't allocate buffer for pixelData!\n");
         return -1;
     }
+    printf("maskImage size: %d\n", maskImage->size);
     cl_mem errorb = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int), NULL, &err);
     if (err != CL_SUCCESS)
     {
@@ -333,14 +332,16 @@ int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_
         return err;
     }
 
+    printf("size: %d\n", maskImage->size * sizeof(Pixel));
+
 
     // Host buffer -> Device buffer (pixelData)
     err = clEnqueueWriteBuffer(
         command_queue,
         pixelData_buffer,
-        CL_FALSE,
+        CL_TRUE,
         0,
-        maskImage->size * sizeof(Pixel),
+        maskImage_binary_size,
         maskImage->pixelData,
         0,
         NULL,
@@ -384,7 +385,7 @@ int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_
         NULL
     );
     if (err != CL_SUCCESS){
-        printf("mask enqueueWrite error\n");
+        printf("errb enqueueWrite error\n");
         return err;
     }
 
@@ -459,10 +460,10 @@ int MaskKernel(char* type, Image* maskImage, Mask* mask, cl_program program, cl_
         return err;
     }
 
-    clReleaseKernel(mask_kernel);
-    clReleaseMemObject(mask_data_buffer);
-    clReleaseMemObject(pixelData_buffer);
     clReleaseMemObject(errorb);
+    clReleaseMemObject(pixelData_buffer);
+    clReleaseMemObject(mask_data_buffer);
+    clReleaseKernel(mask_kernel);
     SaveMask(SAVEPATH_MASK, mask);
     return error;
 }
@@ -518,7 +519,7 @@ int CombineKernel(Image* img1, Image* img2, Mask* mask, Image* result, cl_progra
     cl_mem img2_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, img2_binary_size, NULL, &err);
     if (err != CL_SUCCESS)
     {
-        printf("CombineKernel: Couldn't allocate buffer for img2 data!\n");
+        printf("CombineKernel: Couldn't allocate buffer for img2 data! err: %d, size: %d\n", err, img2_binary_size);
         return -1;
     }
     cl_mem mask_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, mask_binary_size, NULL, &err);
@@ -865,6 +866,8 @@ int CombineKernel(Image* img1, Image* img2, Mask* mask, Image* result, cl_progra
     clFinish(command_queue);
     printf("read buffers to host\n");
 
+   
+
     err = clGetEventProfilingInfo(combine_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &timeInfo->combineStart, NULL);
     if (err != CL_SUCCESS)
     {
@@ -878,7 +881,9 @@ int CombineKernel(Image* img1, Image* img2, Mask* mask, Image* result, cl_progra
         return err;
     }
 
-    clReleaseKernel(combine_kernel);
+    clFinish(command_queue);
+
+    
     clReleaseMemObject(img1_buffer);
     clReleaseMemObject(img2_buffer);
     clReleaseMemObject(mask_buffer);
@@ -888,6 +893,18 @@ int CombineKernel(Image* img1, Image* img2, Mask* mask, Image* result, cl_progra
     clReleaseMemObject(maskInfo_buffer);
     clReleaseMemObject(resultInfo_buffer);
     clReleaseMemObject(errorb);
-    SaveImage(SAVEPATH_IMAGE, result);
+    clReleaseKernel(combine_kernel);
+
+ //_sleep(5000);
+ 
+    printf("image1 size: %d, result size: %d\n", img1->size, result->size);
+    err = SaveImage(SAVEPATH_IMAGE, result);
+    if (err != 0)
+    {
+        printf("Failed to save result image!\n");
+    }
+    printf("saved\n");
+
+    
     return error;
 }

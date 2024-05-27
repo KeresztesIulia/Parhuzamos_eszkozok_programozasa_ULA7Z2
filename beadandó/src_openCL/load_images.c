@@ -96,9 +96,13 @@ int LoadAsImage(char* path, Image* image)
 
 int SaveImage(char* path, Image* image)
 {
+    if (image == NULL)
+    {
+        printf("Image is null!\n");
+        return -1;
+    }
     unsigned char* endImage = (unsigned char*)malloc(image->size * image->channels);
     if (endImage == NULL){
-        free(endImage);
         printf("Memory allocation failed!");
         return -1;
     }
@@ -110,6 +114,12 @@ int SaveImage(char* path, Image* image)
         return -2;
     }
 
+    // FILE *file = fopen("imgs/bin", "wb");
+    // fwrite(endImage, sizeof(unsigned char), image->size * image->channels, file);
+    // fclose(file);
+    // return 0;
+
+    printf("before export w: %d, h: %d, size: %d, ch: %d\n", image->width, image->height, image->size, image->channels);
     stbi_write_png(path, image->width, image->height, image->channels, endImage, image->width * image->channels);
     printf("Image exported!\n");
 

@@ -1,4 +1,15 @@
 result_image_size    |    combine_mode    |    mask_time      |      combine_time
 -------------------------------------------------------------------------------------------
-
 [500x500]	|	alpha	|	31.00000 ms		|		16.00000 ms
+[1280x800]	|	alpha	|	62.00000 ms		|		62.00000 ms
+[1280x800]	|	alpha	|	74.00000 ms		|		60.00000 ms
+[1280x800]	|	colormask	|	141.00000 ms		|		62.00000 ms
+[1280x800]	|	colormask	|	125.00000 ms		|		78.00000 ms
+[1280x800]	|	colormask	|	140.00000 ms		|		63.00000 ms
+[1280x800]	|	colormask	|	125.00000 ms		|		62.00000 ms
+[1280x800]	|	colormask	|	145.00000 ms		|		55.00000 ms
+[1280x800]	|	colormask	|	133.00000 ms		|		67.00000 ms
+[1280x800]	|	colormask	|	141.00000 ms		|		66.00000 ms
+[1280x800]	|	colormask	|	125.00000 ms		|		62.00000 ms
+[1280x800]	|	colormask	|	127.00000 ms		|		73.00000 ms
+[500x500]	|	colormask	|	57.00000 ms		|		17.00000 ms

@@ -7,14 +7,14 @@
 #include "color_management.h"
 #include "combine_images.h"
 
-#define COMBINE_METHOD "alpha" // alpha, alphamask, colormask
-#define THRESHOLD 0
+#define COMBINE_METHOD "colormask" // alpha, alphamask, colormask
+#define THRESHOLD -1
 
 int main(void)
 {
-    const char* IMG1PATH = "imgs/resources/alpha_mask.png";
-    const char* IMG2PATH = "imgs/resources/swirly.jpg";
-    const char* MASKPATH = "imgs/resources/nonsharp_mask.jpg";
+    const char* IMG1PATH = "imgs/resources/final1.png";
+    const char* IMG2PATH = "imgs/resources/final2.png";
+    const char* MASKPATH = "imgs/resources/final_mask.png";
     const char* SAVEPATH = "imgs/combined/combineSEQ.png";
 
     char* timesPath = "times/seq.txt";

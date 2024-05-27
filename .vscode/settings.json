@@ -10,7 +10,9 @@
         "kernel_loader.h": "c",
         "stb_image_write.h": "c",
         "combine_images.h": "c",
-        "color_management.h": "c"
+        "color_management.h": "c",
+        "string.h": "c",
+        "time_info.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

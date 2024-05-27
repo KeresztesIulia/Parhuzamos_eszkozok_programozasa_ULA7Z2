@@ -99,17 +99,21 @@ __kernel void ToBlackAndWhite(__global Pixel* original, __global unsigned char* 
     {
         return;
     }
-    for (int i = from; threshold > 0 && i < to; i++)
+    if (threshold > 0)
     {
-        if (blackandwhite[i] < threshold)
+        for (int i = from; i < to; i++)
         {
-            blackandwhite[i] = 0;
-        }
-        else
-        {
-            blackandwhite[i] = RGB_MAX;
+            if (blackandwhite[i] < threshold)
+            {
+                blackandwhite[i] = 0;
+            }
+            else
+            {
+                blackandwhite[i] = RGB_MAX;
+            }
         }
     }
+    
     return;
 }
 __kernel void AlphaToGreyscale(__global Pixel* original, __global unsigned char* grayscale, int threshold, int size, int n, __global int* err)
